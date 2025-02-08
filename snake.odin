@@ -1,5 +1,6 @@
 package snake
 
+import "core:fmt"
 import "core:log"
 import "core:math"
 import rl "vendor:raylib"
@@ -10,6 +11,7 @@ CELL_SIZE :: 16
 CANVAS_SIZE :: GRID_WIDTH * CELL_SIZE
 TICK_RATE :: 0.13
 MAX_SNAKE_LEN :: GRID_WIDTH * GRID_WIDTH
+INIT_SNAKE_LEN :: 3
 PURPLEISH :: [4]u8{76, 53, 83, 255}
 
 Vec2i :: [2]int
@@ -48,7 +50,7 @@ restart :: proc() {
 	snake[0] = start_head_pos
 	snake[1] = start_head_pos - {0, 1}
 	snake[2] = start_head_pos - {0, 2}
-	snake_len = 3
+	snake_len = INIT_SNAKE_LEN
 	move_direction = {0, 1}
 	game_over = false
 	place_food()
@@ -60,6 +62,13 @@ main :: proc() {
 
 	rl.SetConfigFlags({.VSYNC_HINT})
 	rl.InitWindow(WINDOW_SIZE, WINDOW_SIZE, "Snake")
+
+	go_str := cstring("Game Over")
+	go_size := i32(25)
+	go_width := rl.MeasureText(go_str, go_size)
+	go_ins_str := cstring("Press enter to play again")
+	go_ins_size := i32(15)
+	go_ins_width := rl.MeasureText(go_ins_str, go_ins_size)
 
 	restart()
 
@@ -159,28 +168,26 @@ main :: proc() {
 		}
 
 		if game_over {
-			txt := cstring("Game Over")
-			prev_size := i32(25)
-			width := rl.MeasureText(txt, prev_size)
 			rl.DrawText(
-				txt,
-				CANVAS_SIZE / 2 - width / 2,
-				CANVAS_SIZE / 2 - prev_size / 2,
-				prev_size,
+				go_str,
+				CANVAS_SIZE / 2 - go_width / 2,
+				CANVAS_SIZE / 2 - go_size / 2,
+				go_size,
 				rl.RED,
 			)
 
-			txt = cstring("Press enter to play again")
-			size := i32(15)
-			width = rl.MeasureText(txt, size)
 			rl.DrawText(
-				txt,
-				CANVAS_SIZE / 2 - width / 2,
-				CANVAS_SIZE / 2 - size / 2 + prev_size,
-				size,
+				go_ins_str,
+				CANVAS_SIZE / 2 - go_ins_width / 2,
+				CANVAS_SIZE / 2 - go_ins_size / 2 + go_size,
+				go_ins_size,
 				rl.BLACK,
 			)
 		}
+
+		score := snake_len - INIT_SNAKE_LEN
+		score_str := fmt.ctprintf("Score: %v", score)
+		rl.DrawText(score_str, 4, 4, 8, rl.GRAY)
 
 		rl.EndMode2D()
 		rl.EndDrawing()
