@@ -62,6 +62,7 @@ main :: proc() {
 
 	rl.SetConfigFlags({.VSYNC_HINT})
 	rl.InitWindow(WINDOW_SIZE, WINDOW_SIZE, "Snake")
+	rl.InitAudioDevice()
 
 	go_str := cstring("Game Over")
 	go_size := i32(25)
@@ -76,6 +77,9 @@ main :: proc() {
 	head_sprite := rl.LoadTexture("res/head.png")
 	body_sprite := rl.LoadTexture("res/body.png")
 	tail_sprite := rl.LoadTexture("res/tail.png")
+
+	eat_sound := rl.LoadSound("res/eat.wav")
+	crash_sound := rl.LoadSound("res/crash.wav")
 
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyDown(.UP) {
@@ -109,6 +113,7 @@ main :: proc() {
 			   head_pos.y < 0 ||
 			   head_pos.y >= GRID_WIDTH {
 				game_over = true
+				rl.PlaySound(crash_sound)
 			}
 
 			for i in 1 ..< snake_len {
@@ -116,6 +121,7 @@ main :: proc() {
 
 				if cur_pos == head_pos {
 					game_over = true
+					rl.PlaySound(crash_sound)
 				}
 
 				snake[i] = next_part_pos
@@ -126,6 +132,7 @@ main :: proc() {
 				snake_len += 1
 				snake[snake_len - 1] = next_part_pos
 				place_food()
+				rl.PlaySound(eat_sound)
 			}
 
 			tick_timer += TICK_RATE
@@ -200,5 +207,9 @@ main :: proc() {
 	rl.UnloadTexture(body_sprite)
 	rl.UnloadTexture(tail_sprite)
 
+	rl.UnloadSound(eat_sound)
+	rl.UnloadSound(crash_sound)
+
+	rl.CloseAudioDevice()
 	rl.CloseWindow()
 }
