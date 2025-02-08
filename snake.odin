@@ -1,6 +1,7 @@
 package snake
 
 import "core:log"
+import "core:math"
 import rl "vendor:raylib"
 
 WINDOW_SIZE :: 1000
@@ -61,6 +62,11 @@ main :: proc() {
 	rl.InitWindow(WINDOW_SIZE, WINDOW_SIZE, "Snake")
 
 	restart()
+
+	food_sprite := rl.LoadTexture("res/food.png")
+	head_sprite := rl.LoadTexture("res/head.png")
+	body_sprite := rl.LoadTexture("res/body.png")
+	tail_sprite := rl.LoadTexture("res/tail.png")
 
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyDown(.UP) {
@@ -124,22 +130,32 @@ main :: proc() {
 		}
 		rl.BeginMode2D(camera)
 
-		food_rect := rl.Rectangle {
-			f32(food_pos.x * CELL_SIZE),
-			f32(food_pos.y * CELL_SIZE),
-			CELL_SIZE,
-			CELL_SIZE,
-		}
-		rl.DrawRectangleRec(food_rect, rl.YELLOW)
+		rl.DrawTextureV(food_sprite, {f32(food_pos.x), f32(food_pos.y)} * CELL_SIZE, rl.WHITE)
 
 		for i in 0 ..< snake_len {
-			head_rect := rl.Rectangle {
-				f32(snake[i].x * CELL_SIZE),
-				f32(snake[i].y * CELL_SIZE),
+			part_sprite := body_sprite
+			dir: Vec2i
+
+			if i == 0 {
+				part_sprite = head_sprite
+				dir = snake[i] - snake[i + 1]
+			} else if i == snake_len - 1 {
+				part_sprite = tail_sprite
+				dir = snake[i - 1] - snake[i]
+			} else {
+				dir = snake[i - 1] - snake[i]
+			}
+
+			rot := math.atan2(f32(dir.y), f32(dir.x)) * math.DEG_PER_RAD
+
+			src := rl.Rectangle{0, 0, f32(part_sprite.width), f32(part_sprite.height)}
+			dst := rl.Rectangle {
+				f32(snake[i].x) * CELL_SIZE + 0.5 * CELL_SIZE,
+				f32(snake[i].y) * CELL_SIZE + 0.5 * CELL_SIZE,
 				CELL_SIZE,
 				CELL_SIZE,
 			}
-			rl.DrawRectangleRec(head_rect, rl.WHITE)
+			rl.DrawTexturePro(part_sprite, src, dst, {CELL_SIZE, CELL_SIZE} * 0.5, rot, rl.WHITE)
 		}
 
 		if game_over {
@@ -171,6 +187,11 @@ main :: proc() {
 
 		free_all(context.temp_allocator)
 	}
+
+	rl.UnloadTexture(head_sprite)
+	rl.UnloadTexture(food_sprite)
+	rl.UnloadTexture(body_sprite)
+	rl.UnloadTexture(tail_sprite)
 
 	rl.CloseWindow()
 }
