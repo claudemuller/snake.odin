@@ -98,8 +98,19 @@ main :: proc() {
 
 			for i in 1 ..< snake_len {
 				cur_pos := snake[i]
+
+				if cur_pos == head_pos {
+					game_over = true
+				}
+
 				snake[i] = next_part_pos
 				next_part_pos = cur_pos
+			}
+
+			if head_pos == food_pos {
+				snake_len += 1
+				snake[snake_len - 1] = next_part_pos
+				place_food()
 			}
 
 			tick_timer += TICK_RATE
@@ -157,6 +168,8 @@ main :: proc() {
 
 		rl.EndMode2D()
 		rl.EndDrawing()
+
+		free_all(context.temp_allocator)
 	}
 
 	rl.CloseWindow()
