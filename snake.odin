@@ -109,7 +109,7 @@ init :: proc(state: ^GameState) {
 	state.textures.tail = rl.LoadTexture("res/tail.png")
 
 	state.sounds.eat = rl.LoadSound("res/eat.wav")
-	state.sounds.crash = rl.LoadSound("res/crash.wav")
+	state.sounds.crash = rl.LoadSound("res/uhh.wav")
 
 	gamepad_name := rl.GetGamepadName(0)
 	if gamepad_name != "" {
