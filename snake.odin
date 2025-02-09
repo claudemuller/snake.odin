@@ -6,11 +6,16 @@ import "core:math"
 import rl "vendor:raylib"
 
 WINDOW_SIZE :: 1000
-GAMEPAD_LIMIT :: 0.2
 GRID_WIDTH :: 20
 CELL_SIZE :: 16
 CANVAS_SIZE :: GRID_WIDTH * CELL_SIZE
+
+GAMEPAD_LIMIT :: 0.2
 TICK_RATE :: 0.13
+
+CAMERA_SHAKE_MAGNITUDE :: 5.0
+CAMERA_SHAKE_DURATION :: 15
+
 MAX_SNAKE_LEN :: GRID_WIDTH * GRID_WIDTH
 INIT_SNAKE_LEN :: 3
 
@@ -27,33 +32,35 @@ UI :: struct {
 }
 
 GameState :: struct {
-	snake:      struct {
+	snake:                 struct {
 		len:       u16,
 		body:      [MAX_SNAKE_LEN]Vec2i,
 		direction: Vec2i,
 	},
-	food_pos:   Vec2i,
-	sounds:     struct {
+	food_pos:              Vec2i,
+	sounds:                struct {
 		eat:   rl.Sound,
 		crash: rl.Sound,
 	},
-	textures:   struct {
+	textures:              struct {
 		head: rl.Texture,
 		body: rl.Texture,
 		tail: rl.Texture,
 		food: rl.Texture,
 	},
-	ui:         struct {
+	ui:                    struct {
 		game_over:    UI,
 		new_game_ins: UI,
 	},
-	keys:       struct {
+	keys:                  struct {
 		restart_down: bool,
 	},
-	score:      u8,
-	high_score: u8,
-	tick_timer: f32,
-	game_over:  bool,
+	camera:                rl.Camera2D,
+	camera_shake_duration: f32,
+	score:                 u8,
+	high_score:            u8,
+	tick_timer:            f32,
+	game_over:             bool,
 }
 
 main :: proc() {
@@ -75,11 +82,7 @@ main :: proc() {
 
 		rl.BeginDrawing()
 		rl.ClearBackground(PURPLEISH.rgba)
-
-		camera := rl.Camera2D {
-			zoom = f32(WINDOW_SIZE) / CANVAS_SIZE,
-		}
-		rl.BeginMode2D(camera)
+		rl.BeginMode2D(state.camera)
 
 		render(&state)
 
@@ -93,6 +96,10 @@ main :: proc() {
 }
 
 init :: proc(state: ^GameState) {
+	state.camera = rl.Camera2D {
+		zoom = f32(WINDOW_SIZE) / CANVAS_SIZE,
+	}
+
 	state.tick_timer = TICK_RATE
 
 	state.ui.game_over.str = cstring("Game Over")
@@ -177,11 +184,13 @@ eat :: proc(state: ^GameState) {
 	rl.PlaySound(state.sounds.eat)
 	rl.SetGamepadVibration(0, 1.0, 1.0, 500)
 	place_food(state)
+	state.camera_shake_duration = CAMERA_SHAKE_DURATION
 }
 
 prang :: proc(state: ^GameState) {
 	rl.PlaySound(state.sounds.crash)
 	rl.SetGamepadVibration(0, 1.0, 1.0, 500)
+	state.camera_shake_duration = CAMERA_SHAKE_DURATION
 	state.game_over = true
 	state.high_score = state.score
 }
@@ -231,6 +240,18 @@ update :: proc(state: ^GameState) {
 		}
 
 		state.tick_timer += TICK_RATE
+	}
+
+	if state.camera_shake_duration > 0 {
+		state.camera.offset.x = f32(
+			rl.GetRandomValue(-CAMERA_SHAKE_MAGNITUDE, CAMERA_SHAKE_MAGNITUDE),
+		)
+		state.camera.offset.y = f32(
+			rl.GetRandomValue(-CAMERA_SHAKE_MAGNITUDE, CAMERA_SHAKE_MAGNITUDE),
+		)
+		state.camera_shake_duration -= 1
+	} else {
+		state.camera.offset = {0, 0}
 	}
 }
 
