@@ -148,7 +148,7 @@ process_input :: proc(state: ^GameState) {
 
 		}
 
-		if rl.IsGamepadButtonDown(0, rl.GamepadButton.MIDDLE_RIGHT) {
+		if rl.IsGamepadButtonPressed(0, rl.GamepadButton.MIDDLE_RIGHT) {
 			state.keys.restart_down = true
 		}
 	}
@@ -197,17 +197,23 @@ update :: proc(state: ^GameState) {
 		state.snake.body[0] += state.snake.direction
 		head_pos := state.snake.body[0]
 
-		if head_pos.x < 0 ||
-		   head_pos.x >= GRID_WIDTH ||
-		   head_pos.y < 0 ||
-		   head_pos.y >= GRID_WIDTH {
-			prang(state)
+		if head_pos.x >= GRID_WIDTH {
+			state.snake.body[0].x %= GRID_WIDTH
+		}
+		if head_pos.x < 0 {
+			state.snake.body[0].x = GRID_WIDTH + state.snake.body[0].x
+		}
+		if head_pos.y >= GRID_WIDTH {
+			state.snake.body[0].y %= GRID_WIDTH
+		}
+		if head_pos.y < 0 {
+			state.snake.body[0].y = GRID_WIDTH + state.snake.body[0].y
 		}
 
 		for i in 1 ..< state.snake.len {
 			cur_pos := state.snake.body[i]
 
-			if cur_pos == head_pos {
+			if cur_pos == head_pos && i > 1 {
 				prang(state)
 			}
 
