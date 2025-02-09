@@ -206,6 +206,10 @@ update :: proc(state: ^GameState) {
 
 	if state.tick_timer <= 0 {
 		next_part_pos := state.snake.body[0]
+		// If the snake has turned back on itself
+		if state.snake.body[0] + state.snake.direction == state.snake.body[1] {
+			state.snake.direction *= -1
+		}
 		state.snake.body[0] += state.snake.direction
 		head_pos := state.snake.body[0]
 
