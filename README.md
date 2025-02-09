@@ -22,3 +22,23 @@ Eat them fruits.
 ```bash
 make run
 ```
+
+## Building
+
+### Linux
+
+```bash
+make release-linux
+```
+
+### MacOS
+
+```bash
+make release-darwin
+```
+
+### Windows
+
+```bash
+release.bat
+```
