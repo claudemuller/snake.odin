@@ -18,7 +18,7 @@ PURPLEISH :: [4]u8{39, 39, 68, 255}
 LIGHT_PURPLEISH :: [4]u8{73, 77, 126, 255}
 DARK_PURPLEISH :: [4]u8{22, 22, 46, 255}
 
-Vec2i :: [2]int
+Vec2i :: [2]i8
 
 UI :: struct {
 	str:   cstring,
@@ -28,7 +28,7 @@ UI :: struct {
 
 GameState :: struct {
 	snake:      struct {
-		len:       int,
+		len:       u16,
 		body:      [MAX_SNAKE_LEN]Vec2i,
 		direction: Vec2i,
 	},
@@ -50,6 +50,8 @@ GameState :: struct {
 	keys:       struct {
 		restart_down: bool,
 	},
+	score:      u8,
+	high_score: u8,
 	tick_timer: f32,
 	game_over:  bool,
 }
@@ -181,6 +183,7 @@ prang :: proc(state: ^GameState) {
 	rl.PlaySound(state.sounds.crash)
 	rl.SetGamepadVibration(0, 1.0, 1.0, 500)
 	state.game_over = true
+	state.high_score = state.score
 }
 
 update :: proc(state: ^GameState) {
@@ -282,8 +285,8 @@ render :: proc(state: ^GameState) {
 		)
 	}
 
-	score := state.snake.len - INIT_SNAKE_LEN
-	score_str := fmt.ctprintf("Score: %v", score)
+	state.score = u8(state.snake.len - INIT_SNAKE_LEN)
+	score_str := fmt.ctprintf("Score: %v [%v]", state.score, state.high_score)
 	rl.DrawText(score_str, 4, 4, 8, rl.GRAY)
 }
 
@@ -294,8 +297,8 @@ place_food :: proc(state: ^GameState) {
 	}
 
 	free_cells := make([dynamic]Vec2i, context.temp_allocator)
-	for x in 0 ..< GRID_WIDTH {
-		for y in 0 ..< GRID_WIDTH {
+	for x in i8(0) ..< GRID_WIDTH {
+		for y in i8(0) ..< GRID_WIDTH {
 			if !occupied[x][y] {
 				append(&free_cells, Vec2i{x, y})
 			}
@@ -315,8 +318,14 @@ restart :: proc(state: ^GameState) {
 	state.snake.body[2] = start_head_pos - {0, 2}
 	state.snake.len = INIT_SNAKE_LEN
 	state.snake.direction = {0, 1}
+
 	state.game_over = false
 	state.keys.restart_down = false
+	if state.score > state.high_score {
+		state.high_score = state.score
+	}
+	state.score = 0
+
 	place_food(state)
 }
 
