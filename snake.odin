@@ -6,6 +6,7 @@ import "core:math"
 import rl "vendor:raylib"
 
 WINDOW_SIZE :: 1000
+GAMEPAD_LIMIT :: 0.2
 GRID_WIDTH :: 20
 CELL_SIZE :: 16
 CANVAS_SIZE :: GRID_WIDTH * CELL_SIZE
@@ -110,8 +111,9 @@ init :: proc(state: ^GameState) {
 	state.sounds.eat = rl.LoadSound("res/eat.wav")
 	state.sounds.crash = rl.LoadSound("res/crash.wav")
 
-	if (rl.IsGamepadAvailable(0)) {
-		log.info("Gamepad connected: %s", rl.GetGamepadName(0))
+	gamepad_name := rl.GetGamepadName(0)
+	if gamepad_name != "" {
+		log.info("Gamepad connected: ", gamepad_name)
 	}
 }
 
@@ -132,7 +134,19 @@ process_input :: proc(state: ^GameState) {
 
 		leftx := rl.GetGamepadAxisMovement(0, rl.GamepadAxis.LEFT_X)
 		lefty := rl.GetGamepadAxisMovement(0, rl.GamepadAxis.LEFT_Y)
-		log.info("x:%v y:%v", leftx, lefty)
+		if leftx < -GAMEPAD_LIMIT {
+			state.snake.direction = {-1, 0}
+		}
+		if leftx > GAMEPAD_LIMIT {
+			state.snake.direction = {1, 0}
+		}
+		if lefty < -GAMEPAD_LIMIT {
+			state.snake.direction = {0, -1}
+		}
+		if lefty > GAMEPAD_LIMIT {
+			state.snake.direction = {0, 1}
+
+		}
 
 		if rl.IsGamepadButtonDown(0, rl.GamepadButton.MIDDLE_RIGHT) {
 			state.keys.restart_down = true
@@ -157,6 +171,18 @@ process_input :: proc(state: ^GameState) {
 	}
 }
 
+eat :: proc(state: ^GameState) {
+	rl.PlaySound(state.sounds.eat)
+	rl.SetGamepadVibration(0, 1.0, 1.0, 500)
+	place_food(state)
+}
+
+prang :: proc(state: ^GameState) {
+	rl.PlaySound(state.sounds.crash)
+	rl.SetGamepadVibration(0, 1.0, 1.0, 500)
+	state.game_over = true
+}
+
 update :: proc(state: ^GameState) {
 	if state.game_over {
 		if state.keys.restart_down {
@@ -175,18 +201,14 @@ update :: proc(state: ^GameState) {
 		   head_pos.x >= GRID_WIDTH ||
 		   head_pos.y < 0 ||
 		   head_pos.y >= GRID_WIDTH {
-			state.game_over = true
-			rl.PlaySound(state.sounds.crash)
-			// TODO:(lukefilewalker) vibrate controller
+			prang(state)
 		}
 
 		for i in 1 ..< state.snake.len {
 			cur_pos := state.snake.body[i]
 
 			if cur_pos == head_pos {
-				state.game_over = true
-				rl.PlaySound(state.sounds.crash)
-				// TODO:(lukefilewalker) vibrate controller
+				prang(state)
 			}
 
 			state.snake.body[i] = next_part_pos
@@ -196,9 +218,7 @@ update :: proc(state: ^GameState) {
 		if head_pos == state.food_pos {
 			state.snake.len += 1
 			state.snake.body[state.snake.len - 1] = next_part_pos
-			place_food(state)
-			rl.PlaySound(state.sounds.eat)
-			// TODO:(lukefilewalker) vibrate controller
+			eat(state)
 		}
 
 		state.tick_timer += TICK_RATE
