@@ -17,6 +17,10 @@ Eat them fruits.
 - `enter` on the keyboard or the gamepad's `start` to (re)start the game
 - `left/right/up/down` on the keyboard or the controller's `d-pad` or left joystick for navigation
 
+## Release Builds
+
+Can be found on the [Itch.io](https://dxtrs.itch.io/snake) game page.
+
 ## Running
 
 ```bash
