@@ -23,6 +23,12 @@ PURPLEISH :: [4]u8{39, 39, 68, 255}
 LIGHT_PURPLEISH :: [4]u8{73, 77, 126, 255}
 DARK_PURPLEISH :: [4]u8{22, 22, 46, 255}
 
+State :: enum {
+	PLAYING,
+	GAME_OVER,
+	MENU,
+}
+
 Vec2i :: [2]i8
 
 UI :: struct {
@@ -41,6 +47,7 @@ GameState :: struct {
 	sounds:                struct {
 		eat:   rl.Sound,
 		crash: rl.Sound,
+		music: rl.Music,
 	},
 	textures:              struct {
 		head: rl.Texture,
@@ -60,7 +67,7 @@ GameState :: struct {
 	score:                 u8,
 	high_score:            u8,
 	tick_timer:            f32,
-	game_over:             bool,
+	game_state:            State,
 }
 
 main :: proc() {
@@ -73,17 +80,21 @@ main :: proc() {
 
 	state: GameState
 	init(&state)
-	restart(&state)
+
+	rl.PlayMusicStream(state.sounds.music)
+	rl.SetMusicVolume(state.sounds.music, 0.2)
 
 	for !rl.WindowShouldClose() {
+		rl.UpdateMusicStream(state.sounds.music)
+
 		process_input(&state)
 
 		update(&state)
 
 		rl.BeginDrawing()
-		rl.ClearBackground(PURPLEISH.rgba)
 		rl.BeginMode2D(state.camera)
 
+		rl.ClearBackground(PURPLEISH.rgba)
 		render(&state)
 
 		rl.EndMode2D()
@@ -105,7 +116,7 @@ init :: proc(state: ^GameState) {
 	state.ui.game_over.str = cstring("Game Over")
 	state.ui.game_over.size = i32(25)
 	state.ui.game_over.width = rl.MeasureText(state.ui.game_over.str, state.ui.game_over.size)
-	state.ui.new_game_ins.str = cstring("Press enter to play again")
+	state.ui.new_game_ins.str = cstring("Press enter to play")
 	state.ui.new_game_ins.size = i32(15)
 	state.ui.new_game_ins.width = rl.MeasureText(
 		state.ui.new_game_ins.str,
@@ -119,11 +130,14 @@ init :: proc(state: ^GameState) {
 
 	state.sounds.eat = rl.LoadSound("res/eat.wav")
 	state.sounds.crash = rl.LoadSound("res/uhh.wav")
+	state.sounds.music = rl.LoadMusicStream("res/music.mp3")
 
 	gamepad_name := rl.GetGamepadName(0)
 	if gamepad_name != "" {
 		log.info("Gamepad connected: ", gamepad_name)
 	}
+
+	state.game_state = State.MENU
 }
 
 process_input :: proc(state: ^GameState) {
@@ -191,17 +205,19 @@ prang :: proc(state: ^GameState) {
 	rl.PlaySound(state.sounds.crash)
 	rl.SetGamepadVibration(0, 1.0, 1.0, 500)
 	state.camera_shake_duration = CAMERA_SHAKE_DURATION
-	state.game_over = true
+	state.game_state = State.GAME_OVER
 	state.high_score = state.score
 }
 
 update :: proc(state: ^GameState) {
-	if state.game_over {
+	if state.game_state == State.GAME_OVER || state.game_state == State.MENU {
 		if state.keys.restart_down {
 			restart(state)
+			return
 		}
 	} else {
 		state.tick_timer -= rl.GetFrameTime()
+		state.score = u8(state.snake.len - INIT_SNAKE_LEN)
 	}
 
 	if state.tick_timer <= 0 {
@@ -260,39 +276,44 @@ update :: proc(state: ^GameState) {
 }
 
 render :: proc(state: ^GameState) {
-	rl.DrawTextureV(
-		state.textures.food,
-		{f32(state.food_pos.x), f32(state.food_pos.y)} * CELL_SIZE,
-		rl.WHITE,
-	)
+	if state.game_state == State.PLAYING {
+		// Draw food
+		rl.DrawTextureV(
+			state.textures.food,
+			{f32(state.food_pos.x), f32(state.food_pos.y)} * CELL_SIZE,
+			rl.WHITE,
+		)
 
-	for i in 0 ..< state.snake.len {
-		part_sprite := state.textures.body
-		dir: Vec2i
+		// Draw snake
+		for i in 0 ..< state.snake.len {
+			part_sprite := state.textures.body
+			dir: Vec2i
 
-		if i == 0 {
-			part_sprite = state.textures.head
-			dir = state.snake.body[i] - state.snake.body[i + 1]
-		} else if i == state.snake.len - 1 {
-			part_sprite = state.textures.tail
-			dir = state.snake.body[i - 1] - state.snake.body[i]
-		} else {
-			dir = state.snake.body[i - 1] - state.snake.body[i]
+			if i == 0 {
+				part_sprite = state.textures.head
+				dir = state.snake.body[i] - state.snake.body[i + 1]
+			} else if i == state.snake.len - 1 {
+				part_sprite = state.textures.tail
+				dir = state.snake.body[i - 1] - state.snake.body[i]
+			} else {
+				dir = state.snake.body[i - 1] - state.snake.body[i]
+			}
+
+			rot := math.atan2(f32(dir.y), f32(dir.x)) * math.DEG_PER_RAD
+
+			src := rl.Rectangle{0, 0, f32(part_sprite.width / 2), f32(part_sprite.height)}
+			dst := rl.Rectangle {
+				f32(state.snake.body[i].x) * CELL_SIZE + 0.5 * CELL_SIZE,
+				f32(state.snake.body[i].y) * CELL_SIZE + 0.5 * CELL_SIZE,
+				CELL_SIZE,
+				CELL_SIZE,
+			}
+			rl.DrawTexturePro(part_sprite, src, dst, {CELL_SIZE, CELL_SIZE} * 0.5, rot, rl.WHITE)
 		}
-
-		rot := math.atan2(f32(dir.y), f32(dir.x)) * math.DEG_PER_RAD
-
-		src := rl.Rectangle{0, 0, f32(part_sprite.width / 2), f32(part_sprite.height)}
-		dst := rl.Rectangle {
-			f32(state.snake.body[i].x) * CELL_SIZE + 0.5 * CELL_SIZE,
-			f32(state.snake.body[i].y) * CELL_SIZE + 0.5 * CELL_SIZE,
-			CELL_SIZE,
-			CELL_SIZE,
-		}
-		rl.DrawTexturePro(part_sprite, src, dst, {CELL_SIZE, CELL_SIZE} * 0.5, rot, rl.WHITE)
 	}
 
-	if state.game_over {
+	// Draw game over UI
+	if state.game_state == State.GAME_OVER {
 		rl.DrawText(
 			state.ui.game_over.str,
 			CANVAS_SIZE / 2 - state.ui.game_over.width / 2,
@@ -300,7 +321,10 @@ render :: proc(state: ^GameState) {
 			state.ui.game_over.size,
 			LIGHT_PURPLEISH.rgba,
 		)
+	}
 
+	// Draw menu UI
+	if state.game_state == State.GAME_OVER || state.game_state == State.MENU {
 		rl.DrawText(
 			state.ui.new_game_ins.str,
 			CANVAS_SIZE / 2 - state.ui.new_game_ins.width / 2,
@@ -310,7 +334,7 @@ render :: proc(state: ^GameState) {
 		)
 	}
 
-	state.score = u8(state.snake.len - INIT_SNAKE_LEN)
+	// Draw score UI
 	score_str := fmt.ctprintf("Score: %v [%v]", state.score, state.high_score)
 	rl.DrawText(score_str, 4, 4, 8, rl.GRAY)
 }
@@ -344,7 +368,7 @@ restart :: proc(state: ^GameState) {
 	state.snake.len = INIT_SNAKE_LEN
 	state.snake.direction = {0, 1}
 
-	state.game_over = false
+	state.game_state = State.PLAYING
 	state.keys.restart_down = false
 	if state.score > state.high_score {
 		state.high_score = state.score
@@ -362,6 +386,7 @@ stop :: proc(state: ^GameState) {
 
 	rl.UnloadSound(state.sounds.eat)
 	rl.UnloadSound(state.sounds.crash)
+	rl.UnloadMusicStream(state.sounds.music)
 
 	rl.CloseAudioDevice()
 	rl.CloseWindow()
