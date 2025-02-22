@@ -7,7 +7,6 @@ This is a basic implementation of the classic Snake in Odin with Raylib.
 ## Requirements
 
 - [odin](https://odin-lang.org/)
-- [raylib](https://www.raylib.com/)
 - [make](https://www.gnu.org/software/make/)
 
 ## Instructions
